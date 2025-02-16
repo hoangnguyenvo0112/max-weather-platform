@@ -1,5 +1,7 @@
-flask
-openmeteo_requests
-requests_cache
+flask==2.0.1
+flask-restx==0.5.1
 pandas
-retry_requests
+requests
+openmeteo-requests
+requests-cache
+retry-requests
