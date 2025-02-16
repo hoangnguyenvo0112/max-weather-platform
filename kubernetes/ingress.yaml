@@ -3,16 +3,25 @@ kind: Ingress
 metadata:
   name: weather-ingress
   annotations:
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
-  ingressClassName: alb
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - api.example.com
+    secretName: weather-tls
   rules:
-  - http:
+  - host: api.example.com
+    http:
       paths:
-      - path: /*
+      - path: /
         pathType: Prefix
         backend:
+          service:
+            name: weather-api
+            port:
+              number: 3100
           service:
             name: weather-service
             port:

@@ -43,7 +43,7 @@ variable "public_subnets" {
 variable "eks_cluster_version" {
   description = "EKS cluster version"
   type        = string
-  default     = "1.28"
+  default     = "1.32"
 }
 
 variable "eks_min_size" {

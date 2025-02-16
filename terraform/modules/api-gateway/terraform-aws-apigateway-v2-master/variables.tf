@@ -10,6 +10,25 @@ variable "tags" {
   default     = {}
 }
 
+variable "name" {
+  description = "Name to be used for the API Gateway"
+  type        = string
+}
+
+variable "security_group_ids" {
+  description = "Security group IDs for the VPC Link"
+  type        = list(string)
+}
+
+variable "subnet_ids" {
+  description = "Subnet IDs for the VPC Link"
+  type        = list(string)
+}
+
+variable "alb_listener_arn" {
+  description = "ARN of the ALB listener to integrate with"
+  type        = string
+}
 ################################################################################
 # API Gateway
 ################################################################################
