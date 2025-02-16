@@ -26,6 +26,11 @@ variable "connection_logs" {
   default     = {}
 }
 
+variable "target_id" {
+  type        = string
+  default     = "ingress_ip"
+}
+
 variable "client_keep_alive" {
   description = "Client keep alive value in seconds. The valid range is 60-604800 seconds. The default is 3600 seconds."
   type        = number

@@ -76,12 +76,6 @@ variable "fail_on_warnings" {
   default     = null
 }
 
-variable "name" {
-  description = "The name of the API. Must be less than or equal to 128 characters in length"
-  type        = string
-  default     = ""
-}
-
 variable "body" {
   description = "An OpenAPI specification that defines the set of routes and integrations to create as part of the HTTP APIs. Supported only for HTTP APIs"
   type        = string

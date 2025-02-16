@@ -3,7 +3,7 @@ locals {
 }
 
 module "vpc" {
-  source = "../../modules/vpc/terraform-aws-vpc-master"
+  source = "../modules/vpc/terraform-aws-vpc-master"
 
   name = "${var.project_name}-${var.environment}-vpc"
   cidr = var.vpc_cidr
@@ -13,16 +13,11 @@ module "vpc" {
   public_subnets  = var.public_subnets
 
   enable_nat_gateway     = true
-  single_nat_gateway     = false
   one_nat_gateway_per_az = true
 
   enable_dns_hostnames = true
   enable_dns_support   = true
 
-  tags = {
-    Environment = var.environment
-    "kubernetes.io/cluster/${local.cluster_name}" = "shared"
-  }
 
   public_subnet_tags = {
     "kubernetes.io/role/elb" = "1"
@@ -34,7 +29,7 @@ module "vpc" {
 }
 
 module "eks" {
-  source = "../../modules/eks/terraform-aws-eks-master"
+  source = "../modules/eks/terraform-aws-eks-master"
 
   cluster_name    = local.cluster_name
   cluster_version = var.eks_cluster_version
@@ -71,7 +66,7 @@ module "eks" {
 }
 
 module "alb" {
-  source = "../../modules/alb/terraform-aws-alb-master"
+  source = "../modules/alb/terraform-aws-alb-master"
 
   name = "${var.project_name}-${var.environment}-alb"
 
@@ -99,22 +94,13 @@ module "alb" {
       }
     }
   ]
-
-  http_tcp_listeners = [
-    {
-      port               = 80
-      protocol          = "HTTP"
-      target_group_index = 0
-    }
-  ]
-
   tags = {
     Environment = var.environment
   }
 }
 
 module "api_gateway" {
-  source = "../../modules/api-gateway/terraform-aws-apigateway-v2-master"
+  source = "../modules/api-gateway/terraform-aws-apigateway-v2-master"
 
   name          = "${var.project_name}-${var.environment}-api"
   description   = "HTTP API Gateway for ${var.project_name} ${var.environment}"
@@ -134,15 +120,9 @@ module "api_gateway" {
     }
   }
 
-  integrations = {
-    "ANY /{proxy+}" = {
-      connection_type    = "VPC_LINK"
-      vpc_link          = "main"
-      integration_type   = "HTTP_PROXY"
-      integration_method = "ANY"
-      integration_uri    = module.alb.lb_listener_arns[0]
-    }
-  }
+  subnet_ids         = module.vpc.private_subnets
+  security_group_ids = [aws_security_group.vpce.id]
+  alb_listener_arn   = module.alb.lb_listener_arns[0]
 
   tags = {
     Environment = var.environment
@@ -150,43 +130,17 @@ module "api_gateway" {
 }
 
 module "cloudwatch" {
-  source = "../../modules/cloudwatch/terraform-aws-cloudwatch-master"
+  source = "../modules/cloudwatch/terraform-aws-cloudwatch-master"
 
-  enable_logging = true
-  retention_days = 30
-
-  eks_cluster_name = module.eks.cluster_name
-  alb_arn         = module.alb.lb_arn
-  api_gateway_id  = module.api_gateway.apigatewayv2_api_id
-
-  tags = {
-    Environment = var.environment
-  }
-}locals {
-  target_group_config = {
-    name             = "${var.project_name}-${var.environment}-tg"
-    backend_protocol = "HTTP"
-    backend_port     = 80
-    target_type      = "ip"
-    health_check = {
-      enabled             = true
-      interval           = 30
-      path               = "/health"
-      port               = "traffic-port"
-      healthy_threshold   = 3
-      unhealthy_threshold = 3
-      timeout            = 6
-      protocol           = "HTTP"
-    }
-  }
 }
 
 module "alb" {
-  source = "../../modules/alb/terraform-aws-alb-master"
+  source = "../modules/alb/terraform-aws-alb-master"
 
   # ... other configuration ...
   target_groups = [local.target_group_config]
 }
+
 locals {
   cors_config = {
     allow_headers = ["content-type", "x-amz-date", "authorization", "x-api-key", "x-amz-security-token"]
@@ -195,10 +149,6 @@ locals {
   }
 }
 
-module "api_gateway" {
-  # ... other configuration ...
-  cors_configuration = local.cors_config
-}
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 output "cluster_endpoint" {
@@ -219,7 +169,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.0"
+      version = ">= 4.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"

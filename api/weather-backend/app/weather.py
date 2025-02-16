@@ -8,20 +8,19 @@ from retry_requests import retry
 def fetch_weather():
     """
     Fetch weather data from the Open-Meteo API for Tokyo (latitude: 35.6854, longitude: 139.7531).
-    The function sets up caching and retry mechanisms, processes the returned JSON data,
-    and returns a dictionary with weather information.
+    This function sets up caching and retry mechanisms, processes the returned JSON data,
+    and returns a dictionary containing the weather information.
     """
-
-    # Setup a cached session to reduce API calls; cache expires in 3600 seconds (1 hour)
+    # Set up a cached session (cache expires after 3600 seconds - 1 hour)
     cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
 
-    # Wrap the cached session with retry logic (5 retries, backoff factor 0.2)
+    # Apply retry logic (5 retries, backoff factor = 0.2)
     retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
 
-    # Initialize the Open-Meteo API client with our session
+    # Initialize the Open-Meteo API client with the configured session
     openmeteo = openmeteo_requests.Client(session=retry_session)
 
-    # Define the API endpoint and parameters (here, fetching only the hourly temperature)
+    # Define the API endpoint and parameters (only fetching hourly temperature)
     url = "https://api.open-meteo.com/v1/forecast"
     params = {
         "latitude": 35.6854,
@@ -29,17 +28,17 @@ def fetch_weather():
         "hourly": "temperature_2m"
     }
 
-    # Make the API call; note that the client may support multiple responses for multiple locations
+    # Make the API call; openmeteo.weather_api returns a list of responses
     responses = openmeteo.weather_api(url, params=params)
 
     # Process the first (and only) response
     response = responses[0]
 
-    # Process hourly data. The order of variables is important.
+    # Process hourly data
     hourly = response.Hourly()
     hourly_temperature_2m = hourly.Variables(0).ValuesAsNumpy()
 
-    # Create a date range based on the API response time information
+    # Create a date range based on the API's time information
     hourly_data = {
         "date": pd.date_range(
             start=pd.to_datetime(hourly.Time(), unit="s", utc=True),
@@ -50,10 +49,10 @@ def fetch_weather():
     }
     hourly_data["temperature_2m"] = hourly_temperature_2m
 
-    # Create a DataFrame to pair dates with temperature values
+    # Combine the dates and temperatures into a DataFrame
     hourly_dataframe = pd.DataFrame(data=hourly_data)
 
-    # Convert the DataFrame to a list of dictionaries with ISO-formatted dates for JSON serialization
+    # Convert the DataFrame into a list of dictionaries with ISO-formatted dates for JSON serialization
     hourly_records = []
     for record in hourly_dataframe.itertuples(index=False):
         hourly_records.append({
@@ -61,7 +60,7 @@ def fetch_weather():
             "temperature_2m": record.temperature_2m
         })
 
-    # Build the final weather data dictionary
+    # Build the final weather information dictionary
     weather_info = {
         "coordinates": {
             "latitude": response.Latitude(),

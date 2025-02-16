@@ -1,6 +1,5 @@
-fastapi
-uvicorn[standard]
+flask
 openmeteo_requests
 requests_cache
-retry_requests
 pandas
+retry_requests

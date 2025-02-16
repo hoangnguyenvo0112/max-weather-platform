@@ -48,7 +48,7 @@ resource "aws_lb" "this" {
   internal                                                     = var.internal
   ip_address_type                                              = var.ip_address_type
   load_balancer_type                                           = var.load_balancer_type
-  name                                                         = var.name
+  name                                                         = "alb"
   name_prefix                                                  = var.name_prefix
   preserve_host_header                                         = var.preserve_host_header
   security_groups                                              = var.create_security_group ? concat([aws_security_group.this[0].id], var.security_groups) : var.security_groups
@@ -594,7 +594,7 @@ resource "aws_lb_target_group_attachment" "this" {
   for_each = { for k, v in var.target_groups : k => v if local.create && lookup(v, "create_attachment", true) }
 
   target_group_arn  = aws_lb_target_group.this[each.key].arn
-  target_id         = each.value.target_id
+  target_id         = "ingress_ip"
   port              = try(each.value.target_type, null) == "lambda" ? null : try(each.value.port, var.default_port)
   availability_zone = try(each.value.availability_zone, null)
 
