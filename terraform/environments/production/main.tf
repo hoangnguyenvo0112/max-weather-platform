@@ -162,4 +162,69 @@ module "cloudwatch" {
   tags = {
     Environment = var.environment
   }
+}locals {
+  target_group_config = {
+    name             = "${var.project_name}-${var.environment}-tg"
+    backend_protocol = "HTTP"
+    backend_port     = 80
+    target_type      = "ip"
+    health_check = {
+      enabled             = true
+      interval           = 30
+      path               = "/health"
+      port               = "traffic-port"
+      healthy_threshold   = 3
+      unhealthy_threshold = 3
+      timeout            = 6
+      protocol           = "HTTP"
+    }
+  }
+}
+
+module "alb" {
+  source = "../../modules/alb/terraform-aws-alb-master"
+
+  # ... other configuration ...
+  target_groups = [local.target_group_config]
+}
+locals {
+  cors_config = {
+    allow_headers = ["content-type", "x-amz-date", "authorization", "x-api-key", "x-amz-security-token"]
+    allow_methods = ["*"]
+    allow_origins = ["*"]
+  }
+}
+
+module "api_gateway" {
+  # ... other configuration ...
+  cors_configuration = local.cors_config
+}
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+output "cluster_endpoint" {
+  description = "Endpoint for EKS control plane"
+  value       = module.eks.cluster_endpoint
+}
+
+output "vpc_id" {
+  description = "VPC ID"
+  value       = module.vpc.vpc_id
+}
+
+output "alb_dns_name" {
+  description = "ALB DNS name"
+  value       = module.alb.lb_dns_name
+}
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.0"
+    }
+  }
+  required_version = ">= 1.0"
 }
