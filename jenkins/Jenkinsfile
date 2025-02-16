@@ -1,0 +1,38 @@
+pipeline {
+    agent any
+    environment {
+        AWS_ACCOUNT = '123456789'
+        ECR_REPO = 'weather-app'
+        CLUSTER_NAME = 'max-weather-eks'
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                git 'https://github.com/max-weather/app.git'
+            }
+        }
+        stage('Build & Test') {
+            steps {
+                sh 'docker build -t $ECR_REPO:latest .'
+            // Add test commands here
+            }
+        }
+        stage('Push to ECR') {
+            steps {
+                sh '''
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $AWS_ACCOUNT.dkr.ecr.us-east-1.amazonaws.com
+          docker tag $ECR_REPO:latest $AWS_ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/$ECR_REPO:latest
+          docker push $AWS_ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/$ECR_REPO:latest
+        '''
+            }
+        }
+        stage('Deploy to EKS') {
+            steps {
+                sh '''
+          aws eks update-kubeconfig --name $CLUSTER_NAME
+          kubectl set image deployment/weather-app app=$AWS_ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/$ECR_REPO:latest
+        '''
+            }
+        }
+    }
+}
